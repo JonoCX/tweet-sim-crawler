@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+
+	
+
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSourcePostgresql" />
+		<property name="packagesToScan">
+		    <list>
+		        <value>br.les.opus.twitter.domain</value>
+		        <value>br.les.opus.instagram.domain</value>
+		    </list>
+		    </property>
+		<property name="hibernateProperties"> 
+            <props> 
+                <prop key="hibernate.dialect">org.hibernate.spatial.dialect.postgis.PostgisDialect</prop>
+                 <prop key="hibernate.hbm2ddl.auto">update</prop>
+				<prop key="hibernate.current_session_context_class">org.hibernate.context.internal.ThreadLocalSessionContext</prop>
+            </props> 
+        </property> 
+	</bean>
+
+	<bean id="dataSourcePostgresqlLocal" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+                <property name="driverClass" value="org.postgresql.Driver" />
+                <property name="jdbcUrl" value="jdbc:postgresql://localhost:5432/dengue" />
+                <property name="user" value="jonathan" />
+                <property name="password" value="" />
+            <property name="minPoolSize" value="1" />
+            <property name="maxPoolSize" value="20" />
+            <property name="acquireIncrement" value="1" />
+            <property name="idleConnectionTestPeriod" value="180" />
+            <property name="maxIdleTime" value="200" />
+        </bean>
+        
+    <bean id="dataSourcePostgresql" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+             <property name="driverClass" value="org.postgresql.Driver" />
+             <property name="jdbcUrl" value="jdbc:postgresql://localhost:5432/dengue" />
+             <property name="user" value="jonathan" />
+             <property name="password" value="" />
+         <property name="minPoolSize" value="1" />
+         <property name="maxPoolSize" value="20" />
+         <property name="acquireIncrement" value="1" />
+         <property name="idleConnectionTestPeriod" value="180" />
+         <property name="maxIdleTime" value="200" />
+     </bean>
+	
+</beans>
