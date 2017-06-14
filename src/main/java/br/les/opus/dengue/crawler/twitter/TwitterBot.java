@@ -24,75 +24,45 @@ import java.util.Map;
  */
 @Component
 @Transactional
-public class TwitterBot extends TwitterWorker
-{
+public class TwitterBot extends TwitterWorker {
     // We've noticed that you've posted something important. Please go here for more information: http://bit.ly/2ska3pz
     private static final String REPLY = "Percebemos que publicou algo importante. " +
             "Por favor, acesse aqui para obter mais informações: http://bit.ly/2ska3pz";
 
-    // Prevent the same tweet being replied to twice.
-    private Map<Tweet, Boolean> ids;
 
     @Autowired
     private TweetBotRepository botRepository;
 
-    public TwitterBot() {
-        ids = new HashMap<>();
-    }
-
-    public void addToList(List<Tweet> list) {
-        for (Tweet i : list) {
-            if (!(ids.containsKey(i))) {
-                ids.put(i, Boolean.FALSE);
-            }
-        }
-    }
-
-    public void addToList(Tweet id) {
-        if (!(ids.containsKey(id))) {
-            ids.put(id, Boolean.FALSE);
-        }
-    }
-
-
-    private Twitter getTwitterApi() {
-        ConfigurationBuilder builder = getConfigurationBuilder();
-        TwitterFactory f = new TwitterFactory(builder.build());
-        return f.getInstance();
-    }
-
     @Override
     protected void execute() throws WorkerException {
-        Twitter twitter = this.getTwitterApi();
+        ConfigurationBuilder builder = super.getConfigurationBuilder();
+        TwitterFactory f = new TwitterFactory(builder.build());
+        Twitter twitter = f.getInstance();
 
         StatusUpdate statusUpdate;
         TweetBot tweetBot;
-        for (Map.Entry<Tweet, Boolean> m : ids.entrySet()) {
-            if (m.getValue() == Boolean.FALSE) {
-                Tweet tweet = m.getKey();
-                String replyString = "@" + tweet.getUser().getScreenName() + " " + REPLY;
+        List<TweetBot> tweets = botRepository.findAllNotRepliedTo();
+
+        for (TweetBot tb : tweets) {
+            if (tb.getReplied() == Boolean.FALSE) {
+                String replyString = "@" + tb.getScreenName() + " " + REPLY;
                 statusUpdate = new StatusUpdate(replyString);
-                statusUpdate.setInReplyToStatusId(tweet.getId());
+                statusUpdate.setInReplyToStatusId(tb.getTweetId());
 
-                logger.info("Replying to tweet: " + tweet.getId());
-
+                logger.info("Replying to tweet: https://twitter.com/" + tb.getScreenName() + "/status/" + tb.getTweetId());
                 try {
                     twitter.updateStatus(statusUpdate);
 
-                    tweetBot = new TweetBot();
-                    tweetBot.setTweetId(tweet.getId());
-                    tweetBot.setScreenName(tweet.getUser().getScreenName());
-                    tweetBot.setTimePosted(tweet.getCreatedAt());
-                    tweetBot.setTimeReplied(new Date());
-                    botRepository.save(tweetBot);
-
-                    ids.put(tweet, Boolean.TRUE); // mark that it's been replied too
+                    tb.setTimeReplied(new Date());
+                    tb.setReplied(true);
+                    botRepository.save(tb);
                 } catch (TwitterException te) {
-                    logger.error("Could not reply to status: " + tweet.getId());
+                    logger.error("Could not reply to status: " + tb.getTweetId());
                 }
             } else {
-                logger.info("Tweet " + m.getKey().getId() + " already been processed.");
+                logger.info("Tweet " + tb.getTweetId() + " already been processed.");
             }
         }
     }
 }
+
