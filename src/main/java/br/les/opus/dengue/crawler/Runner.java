@@ -113,6 +113,7 @@ public class Runner {
 
 			}
 		} catch (Exception e) {
+			//
 			logger.error(e.getMessage(), e);
 			e.printStackTrace();
 		}
