@@ -30,39 +30,39 @@ public class TwitterClassifier extends AbstractWorker {
 
 	@Autowired
 	private TweetRepository tweetRepository;
-	
+
 	@Autowired
 	private TweetClassificationRepository tweetClassificationDao;
-	
+
 	@Autowired
 	private TweetsMetadataRepository metaDao;
-	
+
 	@Autowired
 	private TwitterUserRepository userDao;
-	
+
 	@Autowired
 	private SessionFactory sessionFactory;
-	
+
 	private Classifier classifier;
-	
+
 	private Logger logger;
-	
+
 	public TwitterClassifier() {
 		this.logger = Logger.getLogger(TwitterClassifier.class);
 	}
-	
+
 	public void classify(Tweet tweet) throws Exception {
 		Category category = classifier.classify(tweet.getText());
 		TweetClassification classification = tweetClassificationDao.findByKey(category.toString());
 		tweet.setClassification(classification);
 	}
-	
+
 	private void commit() {
 		Session session = sessionFactory.getCurrentSession();
 		session.getTransaction().commit();
 		sessionFactory.getCurrentSession().beginTransaction();
 	}
-	
+
 	public void updateUserMetadata(Tweet tweet) {
 		TweetsMetadata metadata = metaDao.findOne(tweet.getUser(), tweet.getClassification());
 		if (metadata != null) {
@@ -72,26 +72,24 @@ public class TwitterClassifier extends AbstractWorker {
 		}
 		metaDao.save(metadata);
 	}
-	
-	
+
+
 	public void setOutdatedFollowers(Tweet tweet) {
 		TwitterUser user = tweet.getUser();
 		user.setOutdatedFollowers(true);
 		userDao.save(user);
 	}
 
-	@Override
-	@Transactional(value = TxType.REQUIRES_NEW)
-	protected void execute() throws WorkerException {
+	public void startClassification() throws WorkerException {
 		try {
 			logger.info("Carregando classificador");
 			this.classifier = Classifier.getInstance();
 			logger.info("Classificador carregado!");
-			
+
 			List<Tweet> tweets = tweetRepository.findAllUnclassifiedByLanguage("pt");
 			logger.info("Iniciando classificação de todos os não classificados.");
 			logger.info("Tweets a classificar: " + tweets.size());
-			
+
 			int count = 0;
 			for (Tweet tweet : tweets) {
 				this.classify(tweet);
@@ -111,5 +109,26 @@ public class TwitterClassifier extends AbstractWorker {
 		} catch (Exception e) {
 			throw new WorkerException(e.getMessage(), e);
 		}
+	}
+
+	@Override
+	@Transactional(value = TxType.REQUIRES_NEW)
+	protected void execute() {
+
+		try {
+			logger.info("Carregando classificador");
+			this.classifier = Classifier.getInstance();
+			logger.info("Classificador carregado!");
+
+			for(int i = 0; i < 50; i++) {
+				this.startClassification();
+				System.out.println("sleeping");
+				Thread.sleep(100000);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
 	}
 }
