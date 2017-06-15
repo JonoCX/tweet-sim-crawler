@@ -91,13 +91,13 @@ public class Runner {
 			ApplicationContext context = new ClassPathXmlApplicationContext("crawler-app-config.xml");
 			Runner runner = (Runner)context.getBean("runner");
 			
-//			if (args.length < 1) {
-//				logger.fatal("You need to specify at least ONE parameter: " + runner.getValidOptions());
-//				System.exit(1);
-//			}
+			if (args.length < 1) {
+				logger.fatal("You need to specify at least ONE parameter: " + runner.getValidOptions());
+				System.exit(1);
+			}
 			
-			//String crawler = args[0];
-			String crawler = "twitter-classifier";
+			String crawler = args[0];
+			//String crawler = "twitter-classifier";
 			if (runner.isValidOption(crawler)) {
 				logger.info("Running with option: " + crawler);
 				runner.run(crawler);

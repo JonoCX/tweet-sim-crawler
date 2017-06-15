@@ -3,7 +3,9 @@ package br.les.opus.dengue.crawler.twitter;
 import br.les.opus.dengue.crawler.WorkerException;
 import br.les.opus.twitter.domain.Tweet;
 import br.les.opus.twitter.domain.TweetBot;
+import br.les.opus.twitter.domain.TweetBotStatus;
 import br.les.opus.twitter.repositories.TweetBotRepository;
+import br.les.opus.twitter.repositories.TweetBotStatusRepository;
 import br.les.opus.twitter.repositories.TweetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Jonathan Carlton
@@ -25,13 +28,13 @@ import java.util.Map;
 @Component
 @Transactional
 public class TwitterBot extends TwitterWorker {
-    // We've noticed that you've posted something important. Please go here for more information: http://bit.ly/2ska3pz
-    private static final String REPLY = "Percebemos que publicou algo importante. " +
-            "Por favor, acesse aqui para obter mais informações: http://bit.ly/2ska3pz";
 
 
     @Autowired
     private TweetBotRepository botRepository;
+
+    @Autowired
+    private TweetBotStatusRepository statusRepository;
 
     @Override
     protected void execute() throws WorkerException {
@@ -40,24 +43,32 @@ public class TwitterBot extends TwitterWorker {
         Twitter twitter = f.getInstance();
 
         StatusUpdate statusUpdate;
-        TweetBot tweetBot;
         List<TweetBot> tweets = botRepository.findAllNotRepliedTo();
 
         for (TweetBot tb : tweets) {
+
+
+            TweetBotStatus status = statusRepository.randomSelection();
+
             if (tb.getReplied() == Boolean.FALSE) {
-                String replyString = "@" + tb.getScreenName() + " " + REPLY;
+                String replyString = "@" + tb.getScreenName() + " " + status.getStatus();
                 statusUpdate = new StatusUpdate(replyString);
                 statusUpdate.setInReplyToStatusId(tb.getTweetId());
 
                 logger.info("Replying to tweet: https://twitter.com/" + tb.getScreenName() + "/status/" + tb.getTweetId());
                 try {
                     twitter.updateStatus(statusUpdate);
-
                     tb.setTimeReplied(new Date());
                     tb.setReplied(true);
                     botRepository.save(tb);
+                    TimeUnit.MINUTES.sleep(1);
                 } catch (TwitterException te) {
+                    logger.error(te.getErrorMessage());
+                    logger.error(te.getExceptionCode());
+                    logger.error(te.getRateLimitStatus());
                     logger.error("Could not reply to status: " + tb.getTweetId());
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             } else {
                 logger.info("Tweet " + tb.getTweetId() + " already been processed.");
